@@ -46,6 +46,8 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.jna)
+            // JavaCV for H.264 decoding
+            implementation("org.bytedeco:javacv-platform:1.5.10")
         }
     }
 }

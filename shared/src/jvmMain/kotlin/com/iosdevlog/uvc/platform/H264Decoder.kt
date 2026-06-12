@@ -1,18 +1,31 @@
 package com.iosdevlog.uvc.platform
 
+import org.bytedeco.javacv.FFmpegFrameGrabber
+import org.bytedeco.javacv.Frame
+import org.bytedeco.javacv.Java2DFrameConverter
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
-import javax.imageio.ImageIO
 
 object H264Decoder {
-    // H.264 需要外部解码器，Java 原生不支持
-    // 简单方案：使用 JavaCV (FFmpeg wrapper)
+    private val converter = Java2DFrameConverter()
+
     fun decode(data: ByteArray, width: Int, height: Int): BufferedImage? {
-        // TODO: 集成 JavaCV 或使用系统 ffmpeg
-        // 临时：尝试作为 JPEG 解码（某些相机会在 H.264 标记下发送 MJPEG）
         return try {
-            ImageIO.read(ByteArrayInputStream(data))
+            val input = ByteArrayInputStream(data)
+            val grabber = FFmpegFrameGrabber(input)
+            grabber.videoCodec = org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_H264
+            grabber.imageWidth = width
+            grabber.imageHeight = height
+            grabber.format = "h264"
+            grabber.start()
+
+            val frame: Frame? = grabber.grabImage()
+            grabber.stop()
+            grabber.release()
+
+            frame?.let { converter.convert(it) }
         } catch (e: Exception) {
+            println("H264 decode error: ${e.message}")
             null
         }
     }
