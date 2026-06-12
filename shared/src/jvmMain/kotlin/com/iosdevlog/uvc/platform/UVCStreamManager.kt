@@ -46,23 +46,26 @@ class UVCStreamManager {
         val devh = devHandle ?: throw Exception("Camera not opened")
         val ctrl = Memory(256)
 
-        // Try MJPEG first for better compatibility, then YUYV, then H.264
-        val formats = listOf(
-            Triple(LibUVC.UVC_FRAME_FORMAT_MJPEG, "MJPEG", VideoFormat.MJPEG),
-            Triple(LibUVC.UVC_FRAME_FORMAT_YUYV, "YUYV", VideoFormat.YUV),
-            Triple(LibUVC.UVC_FRAME_FORMAT_H264, "H264", VideoFormat.H264)
+        // Try different resolutions for H.264
+        val configs = listOf(
+            Triple(1920, 1080, 30),
+            Triple(1280, 720, 30),
+            Triple(640, 480, 30),
+            Triple(640, 480, 15)
         )
 
-        var lastError: Exception? = null
-        for ((format, name, vFormat) in formats) {
-            val result = libuvc.uvc_get_stream_ctrl_format_size(devh, ctrl, format, width, height, fps)
+        for ((w, h, f) in configs) {
+            val result = libuvc.uvc_get_stream_ctrl_format_size(
+                devh, ctrl, LibUVC.UVC_FRAME_FORMAT_H264, w, h, f
+            )
+            println("H264 ${w}x${h}@${f}fps result: $result")
             if (result == 0) {
-                println("Using format: $name")
-                return startStreamingWithFormat(devh, ctrl, vFormat)
+                println("Using H264: ${w}x${h}@${f}fps")
+                return startStreamingWithFormat(devh, ctrl, VideoFormat.H264)
             }
-            lastError = Exception("$name not supported: $result")
         }
-        throw lastError ?: Exception("No supported format found")
+
+        throw Exception("H264 not supported with any tested resolution")
     }
 
     private fun startStreamingWithFormat(devh: Pointer, ctrl: Pointer, format: VideoFormat): Result<Unit> = runCatching {

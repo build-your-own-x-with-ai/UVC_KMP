@@ -8,7 +8,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
+import com.iosdevlog.uvc.domain.model.VideoFormat
 import com.iosdevlog.uvc.domain.model.VideoFrame
+import com.iosdevlog.uvc.platform.H264Decoder
 import com.iosdevlog.uvc.platform.MJPEGDecoder
 import java.awt.Graphics
 import java.awt.image.BufferedImage
@@ -24,7 +26,11 @@ actual fun VideoPreview(
             Text("No video frame")
         } else {
             val image = remember(frame) {
-                MJPEGDecoder.decode(frame.data, frame.width, frame.height)
+                when (frame.format) {
+                    VideoFormat.MJPEG -> MJPEGDecoder.decode(frame.data, frame.width, frame.height)
+                    VideoFormat.H264 -> H264Decoder.decode(frame.data, frame.width, frame.height)
+                    else -> null
+                }
             }
 
             if (image != null) {
