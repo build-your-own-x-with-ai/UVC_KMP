@@ -9,8 +9,12 @@ class UVCRepositoryJvm : UVCRepository {
     private val _devices = MutableStateFlow<List<UVCDevice>>(emptyList())
 
     init {
-        usbManager.init()
-        refreshDevices()
+        val result = usbManager.init()
+        if (result.isSuccess) {
+            refreshDevices()
+        } else {
+            System.err.println("Failed to initialize USB: ${result.exceptionOrNull()}")
+        }
     }
 
     private fun refreshDevices() {

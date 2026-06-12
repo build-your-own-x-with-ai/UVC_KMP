@@ -7,7 +7,15 @@ import com.sun.jna.ptr.PointerByReference
 
 interface LibUSB : Library {
     companion object {
-        val INSTANCE: LibUSB = Native.load("usb-1.0", LibUSB::class.java)
+        val INSTANCE: LibUSB by lazy {
+            try {
+                Native.load("usb-1.0", LibUSB::class.java)
+            } catch (e: UnsatisfiedLinkError) {
+                System.err.println("Failed to load libusb: ${e.message}")
+                System.err.println("jna.library.path: ${System.getProperty("jna.library.path")}")
+                throw e
+            }
+        }
     }
 
     fun libusb_init(context: PointerByReference?): Int
