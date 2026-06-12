@@ -46,11 +46,11 @@ class UVCStreamManager {
         val devh = devHandle ?: throw Exception("Camera not opened")
         val ctrl = Memory(256)
 
-        // Try H.264 first, then MJPEG, then YUYV
+        // Try MJPEG first for better compatibility, then YUYV, then H.264
         val formats = listOf(
-            Triple(LibUVC.UVC_FRAME_FORMAT_H264, "H264", VideoFormat.H264),
             Triple(LibUVC.UVC_FRAME_FORMAT_MJPEG, "MJPEG", VideoFormat.MJPEG),
-            Triple(LibUVC.UVC_FRAME_FORMAT_YUYV, "YUYV", VideoFormat.YUV)
+            Triple(LibUVC.UVC_FRAME_FORMAT_YUYV, "YUYV", VideoFormat.YUV),
+            Triple(LibUVC.UVC_FRAME_FORMAT_H264, "H264", VideoFormat.H264)
         )
 
         var lastError: Exception? = null
