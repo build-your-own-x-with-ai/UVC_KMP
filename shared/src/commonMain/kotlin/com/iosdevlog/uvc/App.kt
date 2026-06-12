@@ -50,6 +50,13 @@ fun App() {
                         selectedDeviceId = null
                         currentFrame = null
                     }
+                },
+                onCaptureScreenshot = {
+                    currentFrame?.let { frame ->
+                        scope.launch {
+                            captureScreenshot(frame)
+                        }
+                    }
                 }
             )
         }

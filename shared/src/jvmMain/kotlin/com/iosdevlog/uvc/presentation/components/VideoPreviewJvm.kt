@@ -1,7 +1,9 @@
 package com.iosdevlog.uvc.presentation.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,8 +36,11 @@ actual fun VideoPreview(
             }
 
             if (image != null) {
+                // Calculate aspect ratio to preserve original proportions
+                val aspectRatio = image.width.toFloat() / image.height.toFloat()
+
                 SwingPanel(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.aspectRatio(aspectRatio).fillMaxWidth(),
                     factory = { VideoPanel(image) },
                     update = { it.updateImage(image) }
                 )

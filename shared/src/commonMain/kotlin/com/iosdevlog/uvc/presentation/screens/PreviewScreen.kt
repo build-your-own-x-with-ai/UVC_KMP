@@ -13,6 +13,7 @@ fun PreviewScreen(
     deviceName: String,
     currentFrame: VideoFrame?,
     onDisconnect: () -> Unit,
+    onCaptureScreenshot: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -21,6 +22,9 @@ fun PreviewScreen(
             TopAppBar(
                 title = { Text(deviceName) },
                 actions = {
+                    IconButton(onClick = onCaptureScreenshot) {
+                        Text("📷")
+                    }
                     TextButton(onClick = onDisconnect) {
                         Text("Disconnect")
                     }
@@ -32,7 +36,6 @@ fun PreviewScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
             VideoPreview(
                 frame = currentFrame,
