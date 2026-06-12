@@ -1,14 +1,18 @@
 package com.iosdevlog.uvc.presentation.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
 import com.iosdevlog.uvc.domain.model.VideoFrame
+import com.iosdevlog.uvc.platform.MJPEGDecoder
+import java.awt.Graphics
+import java.awt.image.BufferedImage
+import javax.swing.JPanel
 
 @Composable
 actual fun VideoPreview(
@@ -19,9 +23,31 @@ actual fun VideoPreview(
         if (frame == null) {
             Text("No video frame")
         } else {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawRect(Color.Gray)
+            val image = remember(frame) {
+                MJPEGDecoder.decode(frame.data, frame.width, frame.height)
+            }
+
+            if (image != null) {
+                SwingPanel(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { VideoPanel(image) },
+                    update = { it.updateImage(image) }
+                )
+            } else {
+                Text("Failed to decode frame")
             }
         }
+    }
+}
+
+private class VideoPanel(private var image: BufferedImage) : JPanel() {
+    fun updateImage(newImage: BufferedImage) {
+        image = newImage
+        repaint()
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        g.drawImage(image, 0, 0, width, height, null)
     }
 }
