@@ -9,7 +9,7 @@ import java.io.File
 interface LibUSB : Library {
     companion object {
         init {
-            val libDir = File("desktopApp/libs/macos").absolutePath
+            val libDir = File("libs/macos").absolutePath
             System.setProperty("jna.library.path", libDir)
             println("JNA library path set to: $libDir")
         }
