@@ -2,11 +2,14 @@ package com.iosdevlog.uvc.domain.repository
 
 import com.iosdevlog.uvc.domain.model.*
 import com.iosdevlog.uvc.platform.LibUSBManager
+import com.iosdevlog.uvc.platform.UVCStreamManager
 import kotlinx.coroutines.flow.*
 
 class UVCRepositoryJvm : UVCRepository {
     private val usbManager = LibUSBManager()
+    private val streamManager = UVCStreamManager()
     private val _devices = MutableStateFlow<List<UVCDevice>>(emptyList())
+    private val activeStreams = mutableMapOf<String, Flow<VideoFrame>>()
 
     init {
         val result = usbManager.init()
@@ -15,6 +18,7 @@ class UVCRepositoryJvm : UVCRepository {
         } else {
             System.err.println("Failed to initialize USB: ${result.exceptionOrNull()}")
         }
+        streamManager.init()
     }
 
     private fun refreshDevices() {
@@ -23,13 +27,21 @@ class UVCRepositoryJvm : UVCRepository {
 
     override fun getDevices(): Flow<List<UVCDevice>> = _devices.asStateFlow()
 
-    override suspend fun connect(deviceId: String): Result<Unit> = Result.success(Unit)
+    override suspend fun connect(deviceId: String): Result<Unit> = runCatching {
+        val device = _devices.value.find { it.id == deviceId } ?: throw Exception("Device not found")
+        streamManager.openCamera(device.vendorId, device.productId).getOrThrow()
+        streamManager.startStreaming().getOrThrow()
+        activeStreams[deviceId] = streamManager.getFrames()
+    }
 
     override suspend fun disconnect(deviceId: String) {
+        streamManager.stopStreaming()
+        activeStreams.remove(deviceId)
         refreshDevices()
     }
 
-    override fun getVideoStream(deviceId: String): Flow<VideoFrame> = flowOf()
+    override fun getVideoStream(deviceId: String): Flow<VideoFrame> =
+        activeStreams[deviceId] ?: flowOf()
 
     override fun getPacketLog(deviceId: String): Flow<USBPacket> = flowOf()
 
