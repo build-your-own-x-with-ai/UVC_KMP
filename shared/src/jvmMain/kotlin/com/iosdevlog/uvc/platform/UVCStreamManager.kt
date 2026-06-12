@@ -27,11 +27,18 @@ class UVCStreamManager {
         val ctx = context ?: throw Exception("UVC not initialized")
         val devRef = PointerByReference()
         val result = libuvc.uvc_find_device(ctx, devRef, vid, pid, null)
+        println("uvc_find_device result: $result")
         if (result != 0) throw Exception("uvc_find_device failed: $result")
 
+        val device = devRef.value
+        if (device == null) throw Exception("Device pointer is null")
+
         val devhRef = PointerByReference()
-        val openResult = libuvc.uvc_open(devRef.value, devhRef)
-        if (openResult != 0) throw Exception("uvc_open failed: $openResult")
+        val openResult = libuvc.uvc_open(device, devhRef)
+        println("uvc_open result: $openResult")
+        if (openResult != 0) {
+            throw Exception("uvc_open failed: $openResult (error -3 = permission denied, check System Settings > Privacy > Camera)")
+        }
         devHandle = devhRef.value
     }
 

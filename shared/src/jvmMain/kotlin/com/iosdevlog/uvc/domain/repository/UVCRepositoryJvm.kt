@@ -30,8 +30,20 @@ class UVCRepositoryJvm : UVCRepository {
     override suspend fun connect(deviceId: String): Result<Unit> = runCatching {
         val device = _devices.value.find { it.id == deviceId } ?: throw Exception("Device not found")
         println("Connecting to device: ${device.name} (${device.vendorId}:${device.productId})")
-        streamManager.openCamera(device.vendorId, device.productId).getOrThrow()
-        streamManager.startStreaming().getOrThrow()
+
+        val openResult = streamManager.openCamera(device.vendorId, device.productId)
+        if (openResult.isFailure) {
+            println("Failed to open camera: ${openResult.exceptionOrNull()?.message}")
+            throw openResult.exceptionOrNull() ?: Exception("Failed to open camera")
+        }
+        println("Camera opened successfully")
+
+        val streamResult = streamManager.startStreaming()
+        if (streamResult.isFailure) {
+            println("Failed to start streaming: ${streamResult.exceptionOrNull()?.message}")
+            throw streamResult.exceptionOrNull() ?: Exception("Failed to start streaming")
+        }
+
         activeStreams[deviceId] = streamManager.getFrames()
         println("Connected successfully, stream active")
     }
