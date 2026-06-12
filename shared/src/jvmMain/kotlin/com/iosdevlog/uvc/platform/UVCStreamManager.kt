@@ -63,6 +63,7 @@ class UVCStreamManager {
         val callback = object : FrameCallback {
             override fun invoke(frame: UVCFrame?, user_ptr: Pointer?) {
                 frame?.let {
+                    println("Frame received: ${it.width}x${it.height}, ${it.data_bytes} bytes, format=$format")
                     val data = it.data?.getByteArray(0, it.data_bytes) ?: return
                     frameChannel.trySend(
                         VideoFrame(data, it.width, it.height, format, System.currentTimeMillis())
@@ -74,6 +75,7 @@ class UVCStreamManager {
         val callbackPtr = com.sun.jna.CallbackReference.getFunctionPointer(callback)
         val streamResult = libuvc.uvc_start_streaming(devh, ctrl, callbackPtr, null, 0)
         if (streamResult != 0) throw Exception("uvc_start_streaming failed: $streamResult")
+        println("Streaming started successfully with format: $format")
     }
 
     fun getFrames(): Flow<VideoFrame> = frameChannel.receiveAsFlow()
