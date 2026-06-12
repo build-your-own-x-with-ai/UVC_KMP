@@ -33,7 +33,17 @@ class UVCRepositoryJvm : UVCRepository {
 
         val openResult = streamManager.openCamera(device.vendorId, device.productId)
         if (openResult.isFailure) {
-            println("Failed to open camera: ${openResult.exceptionOrNull()?.message}")
+            val error = openResult.exceptionOrNull()?.message ?: ""
+            println("Failed to open camera: $error")
+
+            // If permission denied on macOS, open System Settings
+            if (error.contains("-3") && System.getProperty("os.name").contains("Mac")) {
+                try {
+                    Runtime.getRuntime().exec("open x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")
+                } catch (e: Exception) {
+                    println("Failed to open System Settings: ${e.message}")
+                }
+            }
             throw openResult.exceptionOrNull() ?: Exception("Failed to open camera")
         }
         println("Camera opened successfully")
