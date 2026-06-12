@@ -112,7 +112,14 @@ class UVCStreamManager {
                     val frame = UVCFrame(framePtr)
                     frame.read()
 
-                    println("Frame: ${frame.width}x${frame.height}, ${frame.data_bytes.toLong()} bytes, seq=${frame.sequence}")
+                    println("Frame: ${frame.width}x${frame.height}, ${frame.data_bytes.toLong()} bytes, seq=${frame.sequence}, format=${frame.frame_format}")
+
+                    // Print first 20 bytes to see SPS/PPS
+                    if (frame.sequence <= 2) {
+                        val header = frame.data?.getByteArray(0, minOf(20, frame.data_bytes.toInt()))
+                        println("Frame ${frame.sequence} header: ${header?.joinToString(" ") { "%02X".format(it) }}")
+                    }
+
                     val data = frame.data?.getByteArray(0, frame.data_bytes.toInt()) ?: run {
                         println("Failed to read frame data")
                         return
