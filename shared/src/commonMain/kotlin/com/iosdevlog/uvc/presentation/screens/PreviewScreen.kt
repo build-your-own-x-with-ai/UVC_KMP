@@ -14,6 +14,8 @@ fun PreviewScreen(
     currentFrame: VideoFrame?,
     onDisconnect: () -> Unit,
     onCaptureScreenshot: () -> Unit = {},
+    onToggleRecording: () -> Unit = {},
+    isRecording: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -24,6 +26,9 @@ fun PreviewScreen(
                 actions = {
                     IconButton(onClick = onCaptureScreenshot) {
                         Text("📷")
+                    }
+                    IconButton(onClick = onToggleRecording) {
+                        Text(if (isRecording) "⏹️" else "⏺️")
                     }
                     TextButton(onClick = onDisconnect) {
                         Text("Disconnect")

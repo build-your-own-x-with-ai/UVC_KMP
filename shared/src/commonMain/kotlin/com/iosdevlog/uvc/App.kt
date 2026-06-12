@@ -3,6 +3,7 @@ package com.iosdevlog.uvc
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import com.iosdevlog.uvc.domain.repository.createUVCRepository
+import com.iosdevlog.uvc.platform.VideoRecorder
 import com.iosdevlog.uvc.presentation.screens.CameraListScreen
 import com.iosdevlog.uvc.presentation.screens.PreviewScreen
 import com.iosdevlog.uvc.presentation.viewmodel.CameraListViewModel
@@ -16,14 +17,20 @@ fun App() {
         val viewModel = remember { CameraListViewModel(repository) }
         val devices by viewModel.devices.collectAsState()
         val scope = rememberCoroutineScope()
+        val recorder = remember { VideoRecorder() }
 
         var selectedDeviceId by remember { mutableStateOf<String?>(null) }
         var currentFrame by remember { mutableStateOf(null as com.iosdevlog.uvc.domain.model.VideoFrame?) }
+        var isRecording by remember { mutableStateOf(false) }
 
         LaunchedEffect(selectedDeviceId) {
             selectedDeviceId?.let { deviceId ->
                 repository.getVideoStream(deviceId).collectLatest { frame ->
                     currentFrame = frame
+                    // Write frame to recorder if recording
+                    if (isRecording) {
+                        recorder.writeFrame(frame.data)
+                    }
                 }
             }
         }
@@ -44,8 +51,13 @@ fun App() {
             PreviewScreen(
                 deviceName = device?.name ?: "Unknown",
                 currentFrame = currentFrame,
+                isRecording = isRecording,
                 onDisconnect = {
                     scope.launch {
+                        if (isRecording) {
+                            recorder.stopRecording()
+                            isRecording = false
+                        }
                         selectedDeviceId?.let { repository.disconnect(it) }
                         selectedDeviceId = null
                         currentFrame = null
@@ -55,6 +67,17 @@ fun App() {
                     currentFrame?.let { frame ->
                         scope.launch {
                             captureScreenshot(frame)
+                        }
+                    }
+                },
+                onToggleRecording = {
+                    scope.launch {
+                        if (isRecording) {
+                            recorder.stopRecording()
+                            isRecording = false
+                        } else {
+                            recorder.startRecording()
+                            isRecording = true
                         }
                     }
                 }
