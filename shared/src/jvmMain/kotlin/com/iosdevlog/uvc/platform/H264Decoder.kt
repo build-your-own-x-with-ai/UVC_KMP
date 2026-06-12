@@ -3,62 +3,94 @@ package com.iosdevlog.uvc.platform
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
 import java.awt.image.BufferedImage
-import java.io.File
-import java.io.FileOutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
+import java.io.*
+import java.util.concurrent.ConcurrentLinkedQueue
 
 object H264Decoder {
     private val converter = Java2DFrameConverter()
-    private var pipedOutput: PipedOutputStream? = null
-    private var pipedInput: PipedInputStream? = null
     private var grabber: FFmpegFrameGrabber? = null
     private var decoderThread: Thread? = null
-    private var latestFrame: BufferedImage? = null
+    @Volatile private var latestFrame: BufferedImage? = null
+    private val frameQueue = ConcurrentLinkedQueue<ByteArray>()
+    private var frameCount = 0
+
+    // Temp file for cumulative H.264 stream
+    private val tempFile = File.createTempFile("uvc_stream_", ".h264")
+    private var fileStream: FileOutputStream? = null
 
     init {
         try {
-            // Create pipe for H.264 stream
-            pipedInput = PipedInputStream(1024 * 1024) // 1MB buffer
-            pipedOutput = PipedOutputStream(pipedInput)
+            fileStream = FileOutputStream(tempFile, false)
+            println("H264Decoder: Temp stream file: ${tempFile.absolutePath}")
+            println("H264Decoder: Real resolution: 1280x480 (from SPS)")
 
-            grabber = FFmpegFrameGrabber(pipedInput).apply {
-                videoCodec = org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_H264
-                format = "h264"
-                start()
-            }
-
-            // Decoder thread
-            decoderThread = Thread {
+            // Start decoder thread
+            decoderThread = Thread({
                 try {
+                    // Wait for first frame (SPS)
+                    Thread.sleep(500)
+
+                    grabber = FFmpegFrameGrabber(tempFile.absolutePath).apply {
+                        format = "h264"
+                        start()
+                    }
+                    println("H264Decoder: FFmpeg grabber started")
+
+                    var lastPosition = 0L
                     while (!Thread.interrupted()) {
-                        grabber?.grabImage()?.let { frame ->
-                            latestFrame = converter.convert(frame)
+                        // Check if file has new data
+                        val currentSize = tempFile.length()
+                        if (currentSize > lastPosition) {
+                            grabber?.grabImage()?.let { frame ->
+                                latestFrame = converter.convert(frame)
+                                if (frameCount % 30 == 0) {
+                                    println("H264Decoder: Decoded frame ${frameCount/30}s")
+                                }
+                            }
+                            lastPosition = currentSize
+                        } else {
+                            Thread.sleep(10)
                         }
                     }
                 } catch (e: Exception) {
-                    println("Decoder thread error: ${e.message}")
+                    println("H264Decoder thread error: ${e.message}")
+                    e.printStackTrace()
                 }
-            }.apply {
+            }, "H264-Decoder").apply {
                 isDaemon = true
                 start()
             }
-
-            println("H.264 decoder initialized with persistent state")
         } catch (e: Exception) {
-            println("H.264 decoder init error: ${e.message}")
+            println("H264Decoder init error: ${e.message}")
             e.printStackTrace()
         }
     }
 
     fun decode(data: ByteArray, width: Int, height: Int): BufferedImage? {
         return try {
-            pipedOutput?.write(data)
-            pipedOutput?.flush()
+            // Write to cumulative file
+            fileStream?.write(data)
+            fileStream?.flush()
+            frameCount++
+
+            if (frameCount % 30 == 0) {
+                println("H264Decoder: Received ${frameCount} frames (${frameCount/30}s)")
+            }
+
+            // Return latest decoded frame
             latestFrame
         } catch (e: Exception) {
-            println("H264 decode error: ${e.message}")
+            println("H264Decoder error: ${e.message}")
             null
         }
+    }
+
+    fun close() {
+        decoderThread?.interrupt()
+        grabber?.stop()
+        grabber?.release()
+        fileStream?.close()
+        tempFile.delete()
+        println("H264Decoder: Closed")
     }
 }

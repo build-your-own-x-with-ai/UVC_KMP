@@ -47,7 +47,7 @@ class LibUSBManager {
                                 vendorId = vendorId,
                                 productId = productId,
                                 serialNumber = null,
-                                supportedFormats = listOf(VideoFormat.MJPEG, VideoFormat.YUV)
+                                supportedFormats = listOf(VideoFormat.H264, VideoFormat.MJPEG, VideoFormat.YUV)
                             )
                         )
                     }
