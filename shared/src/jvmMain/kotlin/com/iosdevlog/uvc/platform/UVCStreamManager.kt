@@ -38,17 +38,34 @@ class UVCStreamManager {
     fun startStreaming(width: Int = 640, height: Int = 480, fps: Int = 30): Result<Unit> = runCatching {
         val devh = devHandle ?: throw Exception("Camera not opened")
         val ctrl = Memory(256)
-        val result = libuvc.uvc_get_stream_ctrl_format_size(
-            devh, ctrl, LibUVC.UVC_FRAME_FORMAT_MJPEG, width, height, fps
+
+        // Try H.264 first, then MJPEG, then YUYV
+        val formats = listOf(
+            Triple(LibUVC.UVC_FRAME_FORMAT_H264, "H264", VideoFormat.H264),
+            Triple(LibUVC.UVC_FRAME_FORMAT_MJPEG, "MJPEG", VideoFormat.MJPEG),
+            Triple(LibUVC.UVC_FRAME_FORMAT_YUYV, "YUYV", VideoFormat.YUV)
         )
-        if (result != 0) throw Exception("uvc_get_stream_ctrl_format_size failed: $result")
+
+        var lastError: Exception? = null
+        for ((format, name, vFormat) in formats) {
+            val result = libuvc.uvc_get_stream_ctrl_format_size(devh, ctrl, format, width, height, fps)
+            if (result == 0) {
+                println("Using format: $name")
+                return startStreamingWithFormat(devh, ctrl, vFormat)
+            }
+            lastError = Exception("$name not supported: $result")
+        }
+        throw lastError ?: Exception("No supported format found")
+    }
+
+    private fun startStreamingWithFormat(devh: Pointer, ctrl: Pointer, format: VideoFormat): Result<Unit> = runCatching {
 
         val callback = object : FrameCallback {
             override fun invoke(frame: UVCFrame?, user_ptr: Pointer?) {
                 frame?.let {
                     val data = it.data?.getByteArray(0, it.data_bytes) ?: return
                     frameChannel.trySend(
-                        VideoFrame(data, it.width, it.height, VideoFormat.MJPEG, System.currentTimeMillis())
+                        VideoFrame(data, it.width, it.height, format, System.currentTimeMillis())
                     )
                 }
             }
