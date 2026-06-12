@@ -4,9 +4,16 @@ import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.PointerByReference
+import java.io.File
 
 interface LibUSB : Library {
     companion object {
+        init {
+            val libDir = File("desktopApp/libs/macos").absolutePath
+            System.setProperty("jna.library.path", libDir)
+            println("JNA library path set to: $libDir")
+        }
+
         val INSTANCE: LibUSB by lazy {
             try {
                 Native.load("usb-1.0", LibUSB::class.java)
