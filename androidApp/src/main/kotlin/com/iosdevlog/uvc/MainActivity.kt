@@ -12,6 +12,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        // Initialize Android-specific components
+        initScreenshot(this)
+
+        // Initialize Android repository
+        val repository = com.iosdevlog.uvc.domain.repository.createUVCRepository()
+        if (repository is com.iosdevlog.uvc.domain.repository.AndroidUVCRepository) {
+            repository.init(this)
+        }
+
         setContent {
             App()
         }
