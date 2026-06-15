@@ -21,18 +21,21 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.iosdevlog.uvc"
+            packageName = "UVC"
             packageVersion = "1.0.0"
+            description = "UVC Camera Application - Kotlin Multiplatform"
+            vendor = "iosdevlog"
 
-            macOS {
-                iconFile.set(project.file("icons/icon.icns"))
-            }
-            windows {
-                iconFile.set(project.file("icons/icon.ico"))
-            }
-            linux {
-                iconFile.set(project.file("icons/icon.png"))
-            }
+            // Icons are optional - remove for now
+            // macOS {
+            //     iconFile.set(project.file("icons/icon.icns"))
+            // }
+            // windows {
+            //     iconFile.set(project.file("icons/icon.ico"))
+            // }
+            // linux {
+            //     iconFile.set(project.file("icons/icon.png"))
+            // }
 
             includeAllModules = true
         }
