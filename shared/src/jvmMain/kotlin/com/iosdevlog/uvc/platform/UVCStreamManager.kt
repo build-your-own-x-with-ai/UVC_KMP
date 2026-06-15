@@ -83,19 +83,47 @@ class UVCStreamManager {
         println("=== End of format enumeration ===\n")
     }
 
-    fun startStreaming(width: Int = 5184, height: Int = 1944, fps: Int = 30): Result<Unit> = runCatching {
+    data class VideoMode(
+        val width: Int,
+        val height: Int,
+        val fps: Int,
+        val format: VideoFormat
+    ) {
+        override fun toString() = "${width}x${height}@${fps}fps ($format)"
+    }
+
+    // Common video modes for UVC cameras
+    val commonModes = listOf(
+        VideoMode(5184, 1944, 30, VideoFormat.H264),  // This camera's native resolution
+        VideoMode(1280, 480, 30, VideoFormat.H264),
+        VideoMode(1920, 1080, 30, VideoFormat.H264),
+        VideoMode(1280, 720, 30, VideoFormat.H264),
+        VideoMode(640, 480, 30, VideoFormat.H264),
+        VideoMode(1920, 1080, 30, VideoFormat.MJPEG),
+        VideoMode(1280, 720, 30, VideoFormat.MJPEG),
+        VideoMode(640, 480, 30, VideoFormat.MJPEG),
+    )
+
+    fun startStreaming(width: Int = 5184, height: Int = 1944, fps: Int = 30, format: VideoFormat = VideoFormat.H264): Result<Unit> = runCatching {
         val devh = devHandle ?: throw Exception("Camera not opened")
         val ctrl = Memory(256)
 
-        // Camera supports H.264 5184x1944@30fps
-        val result = libuvc.uvc_get_stream_ctrl_format_size(
-            devh, ctrl, LibUVC.UVC_FRAME_FORMAT_H264, width, height, fps
-        )
-        println("H264 ${width}x${height}@${fps}fps result: $result")
-        if (result != 0) throw Exception("H264 format setup failed: $result")
+        // Try the requested format
+        val formatId = when (format) {
+            VideoFormat.H264 -> LibUVC.UVC_FRAME_FORMAT_H264
+            VideoFormat.MJPEG -> LibUVC.UVC_FRAME_FORMAT_MJPEG
+            VideoFormat.YUV -> LibUVC.UVC_FRAME_FORMAT_YUYV
+            else -> throw Exception("Unsupported format: $format")
+        }
 
-        println("Using H264: ${width}x${height}@${fps}fps")
-        return startStreamingWithFormat(devh, ctrl, VideoFormat.H264)
+        val result = libuvc.uvc_get_stream_ctrl_format_size(
+            devh, ctrl, formatId, width, height, fps
+        )
+        println("${format} ${width}x${height}@${fps}fps result: $result")
+        if (result != 0) throw Exception("$format format setup failed: $result")
+
+        println("Using ${format}: ${width}x${height}@${fps}fps")
+        return startStreamingWithFormat(devh, ctrl, format)
     }
 
     private fun startStreamingWithFormat(devh: Pointer, ctrl: Pointer, format: VideoFormat): Result<Unit> = runCatching {

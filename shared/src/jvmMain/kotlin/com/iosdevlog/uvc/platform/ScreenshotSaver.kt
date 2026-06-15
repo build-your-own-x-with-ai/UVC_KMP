@@ -10,6 +10,13 @@ import javax.imageio.ImageIO
 object ScreenshotSaver {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
 
+    private fun getRealUserHome(): String {
+        // When running with sudo, use the actual user's home, not /var/root
+        return System.getenv("SUDO_USER")?.let { user ->
+            "/Users/$user"
+        } ?: System.getProperty("user.home")
+    }
+
     fun saveScreenshot(frame: VideoFrame): Result<String> = runCatching {
         val image = when (frame.format) {
             VideoFormat.MJPEG -> MJPEGDecoder.decode(frame.data, frame.width, frame.height)
@@ -19,7 +26,7 @@ object ScreenshotSaver {
 
         val timestamp = dateFormat.format(Date())
         val filename = "UVC_Screenshot_$timestamp.png"
-        val desktopPath = System.getProperty("user.home") + "/Desktop"
+        val desktopPath = getRealUserHome() + "/Desktop"
         val outputFile = File(desktopPath, filename)
 
         ImageIO.write(image, "PNG", outputFile)
