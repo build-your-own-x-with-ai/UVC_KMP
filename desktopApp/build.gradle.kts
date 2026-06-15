@@ -28,20 +28,23 @@ compose.desktop {
 
             macOS {
                 iconFile.set(project.file("icons/icon.icns"))
+                // Include macOS native libraries
+                appResourcesRootDir.set(project.layout.projectDirectory.dir("libs/macos"))
             }
             windows {
                 iconFile.set(project.file("icons/icon.ico"))
+                // Include Windows native libraries
+                appResourcesRootDir.set(project.layout.projectDirectory.dir("libs/windows"))
             }
             linux {
                 iconFile.set(project.file("icons/icon.png"))
+                // Include Linux native libraries
+                appResourcesRootDir.set(project.layout.projectDirectory.dir("libs/linux"))
             }
 
             includeAllModules = true
         }
 
-        jvmArgs += listOf(
-            "-Djna.library.path=${project.projectDir}/libs/macos",
-            "-Djava.library.path=${project.projectDir}/libs/macos"
-        )
+        // Note: JVM args removed - libraries should be loaded from bundled resources
     }
 }
