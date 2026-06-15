@@ -1,0 +1,142 @@
+name: Build Multi-Platform
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            task: packageDeb
+            artifact: '*.deb'
+            name: Linux
+          - os: macos-latest
+            task: packageDmg
+            artifact: '*.dmg'
+            name: macOS
+          - os: windows-latest
+            task: packageMsi
+            artifact: '*.msi'
+            name: Windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Grant execute permission for gradlew
+      if: runner.os != 'Windows'
+      run: chmod +x gradlew
+
+    - name: Build Desktop App
+      run: ./gradlew :desktopApp:${{ matrix.task }}
+
+    - name: Find artifacts
+      id: find-artifacts
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          FILE=$(find desktopApp/build/compose/binaries/main -name "*.deb" | head -1)
+        elif [ "${{ runner.os }}" = "macOS" ]; then
+          FILE=$(find desktopApp/build/compose/binaries/main -name "*.dmg" | head -1)
+        else
+          FILE=$(find desktopApp/build/compose/binaries/main -name "*.msi" | head -1)
+        fi
+        echo "artifact_path=$FILE" >> $GITHUB_OUTPUT
+        echo "artifact_name=$(basename $FILE)" >> $GITHUB_OUTPUT
+
+    - name: Upload Desktop Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: UVC-${{ matrix.name }}-${{ github.sha }}
+        path: ${{ steps.find-artifacts.outputs.artifact_path }}
+        retention-days: 90
+
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v3
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build Android APK
+      run: ./gradlew :androidApp:assembleDebug
+
+    - name: Upload Android APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: UVC-Android-${{ github.sha }}
+        path: androidApp/build/outputs/apk/debug/*.apk
+        retention-days: 90
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-desktop, build-android]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: artifacts/**/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
