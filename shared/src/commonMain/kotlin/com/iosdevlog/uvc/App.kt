@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import com.iosdevlog.uvc.domain.repository.createUVCRepository
 import com.iosdevlog.uvc.platform.VideoRecorder
 import com.iosdevlog.uvc.presentation.screens.CameraListScreen
+import com.iosdevlog.uvc.presentation.screens.CameraSettings
 import com.iosdevlog.uvc.presentation.screens.PreviewScreen
 import com.iosdevlog.uvc.presentation.viewmodel.CameraListViewModel
 import kotlinx.coroutines.flow.collectLatest
@@ -22,6 +23,7 @@ fun App() {
         var selectedDeviceId by remember { mutableStateOf<String?>(null) }
         var currentFrame by remember { mutableStateOf(null as com.iosdevlog.uvc.domain.model.VideoFrame?) }
         var isRecording by remember { mutableStateOf(false) }
+        var cameraSettings by remember { mutableStateOf(CameraSettings()) }
 
         LaunchedEffect(selectedDeviceId) {
             selectedDeviceId?.let { deviceId ->
@@ -52,6 +54,12 @@ fun App() {
                 deviceName = device?.name ?: "Unknown",
                 currentFrame = currentFrame,
                 isRecording = isRecording,
+                cameraSettings = cameraSettings,
+                onCameraSettingsChange = { newSettings ->
+                    cameraSettings = newSettings
+                    println("Camera settings updated: $newSettings")
+                    // TODO: Apply settings to camera via CameraController
+                },
                 onDisconnect = {
                     scope.launch {
                         if (isRecording) {

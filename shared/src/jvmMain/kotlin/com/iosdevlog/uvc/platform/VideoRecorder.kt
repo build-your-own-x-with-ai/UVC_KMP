@@ -11,12 +11,19 @@ actual class VideoRecorder {
     private var currentFile: File? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
 
+    private fun getRealUserHome(): String {
+        // When running with sudo, use the actual user's home, not /var/root
+        return System.getenv("SUDO_USER")?.let { user ->
+            "/Users/$user"
+        } ?: System.getProperty("user.home")
+    }
+
     actual fun startRecording(): Result<String> = runCatching {
         if (isRecording) throw Exception("Already recording")
 
         val timestamp = dateFormat.format(Date())
         val filename = "UVC_Recording_$timestamp.h264"
-        val desktopPath = System.getProperty("user.home") + "/Desktop"
+        val desktopPath = getRealUserHome() + "/Desktop"
         currentFile = File(desktopPath, filename)
 
         fileStream = FileOutputStream(currentFile!!)
