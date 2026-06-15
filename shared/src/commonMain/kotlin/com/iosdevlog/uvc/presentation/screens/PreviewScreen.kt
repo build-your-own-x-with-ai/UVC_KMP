@@ -16,8 +16,12 @@ fun PreviewScreen(
     onCaptureScreenshot: () -> Unit = {},
     onToggleRecording: () -> Unit = {},
     isRecording: Boolean = false,
+    cameraSettings: CameraSettings = CameraSettings(),
+    onCameraSettingsChange: (CameraSettings) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showControls by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -30,6 +34,9 @@ fun PreviewScreen(
                     IconButton(onClick = onToggleRecording) {
                         Text(if (isRecording) "⏹️" else "⏺️")
                     }
+                    IconButton(onClick = { showControls = !showControls }) {
+                        Text("⚙️")
+                    }
                     TextButton(onClick = onDisconnect) {
                         Text("Disconnect")
                     }
@@ -37,15 +44,34 @@ fun PreviewScreen(
             )
         }
     ) { paddingValues ->
-        Box(
+        Row(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            VideoPreview(
-                frame = currentFrame,
-                modifier = Modifier.fillMaxSize()
-            )
+            // Video preview
+            Box(
+                modifier = Modifier
+                    .weight(if (showControls) 0.7f else 1f)
+                    .fillMaxHeight()
+            ) {
+                VideoPreview(
+                    frame = currentFrame,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Controls panel
+            if (showControls) {
+                CameraControlsPanel(
+                    settings = cameraSettings,
+                    onSettingsChange = onCameraSettingsChange,
+                    onReset = { onCameraSettingsChange(CameraSettings()) },
+                    modifier = Modifier
+                        .weight(0.3f)
+                        .fillMaxHeight()
+                )
+            }
         }
     }
 }
