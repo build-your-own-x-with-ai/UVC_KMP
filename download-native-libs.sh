@@ -4,7 +4,9 @@
 
 echo "📦 Downloading native libraries for cross-platform builds..."
 
-LIBS_DIR="desktopApp/libs"
+# Get project root directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+LIBS_DIR="$SCRIPT_DIR/desktopApp/libs"
 WINDOWS_DIR="$LIBS_DIR/windows"
 LINUX_DIR="$LIBS_DIR/linux"
 
@@ -16,7 +18,8 @@ echo "Downloading libusb for Windows..."
 LIBUSB_VERSION="1.0.27"
 LIBUSB_URL="https://github.com/libusb/libusb/releases/download/v${LIBUSB_VERSION}/libusb-${LIBUSB_VERSION}.7z"
 
-cd /tmp
+TEMP_DIR=$(mktemp -d)
+cd "$TEMP_DIR"
 curl -L -o libusb.7z "$LIBUSB_URL"
 
 # Extract (requires 7z: brew install p7zip)
@@ -26,7 +29,11 @@ if command -v 7z &> /dev/null; then
     echo "✅ Windows libusb-1.0.dll downloaded"
 else
     echo "⚠️  7z not found. Install with: brew install p7zip"
+    exit 1
 fi
+
+cd "$SCRIPT_DIR"
+rm -rf "$TEMP_DIR"
 
 # For Linux, we can use Docker to get the libraries
 echo ""
