@@ -1,0 +1,69 @@
+name: Download Native Libraries
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'download-native-libs.sh'
+
+jobs:
+  download-libs:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            vcpkg-triplet: x64-windows
+          - os: ubuntu-latest
+            target: linux
+            packages: libusb-1.0-0-dev libuvc-dev
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Install vcpkg
+        git clone https://github.com/Microsoft/vcpkg.git C:\vcpkg
+        C:\vcpkg\bootstrap-vcpkg.bat
+        C:\vcpkg\vcpkg integrate install
+
+        # Install libraries
+        C:\vcpkg\vcpkg install libusb:${{ matrix.vcpkg-triplet }}
+        C:\vcpkg\vcpkg install libuvc:${{ matrix.vcpkg-triplet }}
+
+        # Copy DLLs
+        mkdir -p desktopApp/libs/windows
+        cp C:\vcpkg\installed\${{ matrix.vcpkg-triplet }}\bin\*.dll desktopApp/libs/windows/
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.packages }}
+
+        # Copy shared libraries
+        mkdir -p desktopApp/libs/linux
+        cp /usr/lib/x86_64-linux-gnu/libusb-1.0.so* desktopApp/libs/linux/
+        cp /usr/lib/x86_64-linux-gnu/libuvc.so* desktopApp/libs/linux/ || echo "libuvc not found"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-libs-${{ matrix.target }}
+        path: desktopApp/libs/${{ matrix.target }}/
+        retention-days: 90
+
+    - name: Create PR with libraries
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git checkout -b add-native-libs-${{ matrix.target }}
+        git add desktopApp/libs/${{ matrix.target }}/
+        git commit -m "Add ${{ matrix.target }} native libraries" || exit 0
+        git push origin add-native-libs-${{ matrix.target }}
